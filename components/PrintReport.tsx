@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState } from '../types';
 import SignaturePad from './SignaturePad';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Download, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface PrintReportProps {
   gameState: GameState;
@@ -10,6 +12,8 @@ interface PrintReportProps {
 }
 
 const PrintReport: React.FC<PrintReportProps> = ({ gameState, isOpen, onClose }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   // Get all unique rounds from history to build the rows
   const maxRound = gameState.history.length > 0 
     ? Math.max(...gameState.history.map(l => l.round)) 
@@ -17,39 +21,99 @@ const PrintReport: React.FC<PrintReportProps> = ({ gameState, isOpen, onClose })
   
   const rounds = Array.from({ length: maxRound }, (_, i) => i + 1);
 
-  // If not open, we hide it completely from screen, but it might still be needed for print?
-  // Strategy: We use a fixed overlay that is visible when isOpen is true.
-  // We use standard CSS to ensure this overlay takes over when printing.
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('report-content');
+    if (!element) return;
+
+    try {
+      setIsGeneratingPdf(true);
+
+      // 1. Convert DOM to Image (Canvas)
+      // scale: 2 improves resolution for clearer text on retina displays/pdf
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true, // Handle any external images if added later
+        logging: false,
+        backgroundColor: '#ffffff' // Ensure white background
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+
+      // 2. Initialize PDF (A4 Portrait)
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // 3. Calculate aspect ratio to fit image on page
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      // 4. Add image to PDF
+      // If the report is longer than one page, simple scaling fits it to one page here.
+      // For multi-page, more complex logic is needed, but this fits the current single-page layout.
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
+
+      // 5. Save
+      const fileName = `Molkky_Report_${new Date().toISOString().slice(0,10)}.pdf`;
+      pdf.save(fileName);
+
+    } catch (error) {
+      console.error('PDF Generation Failed:', error);
+      alert('PDF 輸出失敗，請重試或是使用列印功能。');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-white overflow-y-auto animate-fade-in flex flex-col">
       
-      {/* Action Bar - Hidden when printing */}
-      <div className="print:hidden sticky top-0 z-50 bg-slate-900 text-white p-4 flex justify-between items-center shadow-lg">
-        <h2 className="font-bold text-lg flex items-center gap-2">
-           預覽與簽名 (Preview & Sign)
+      {/* Action Bar - Hidden when printing via browser dialog */}
+      <div className="print:hidden sticky top-0 z-50 bg-slate-900 text-white p-4 flex justify-between items-center shadow-lg gap-4">
+        <h2 className="font-bold text-lg flex items-center gap-2 truncate">
+           預覽與簽名 (Sign & Export)
         </h2>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3 items-center">
           <button 
              onClick={onClose}
-             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+             className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <X size={18} /> 關閉
+            <X size={18} /> <span className="hidden sm:inline">關閉</span>
           </button>
+          
           <button 
              onClick={() => window.print()}
-             className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all transform active:scale-95"
+             className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap"
           >
-            <Printer size={18} /> 確認列印
+            <Printer size={18} /> <span className="hidden sm:inline">列印</span>
+          </button>
+
+          <button 
+             onClick={handleDownloadPDF}
+             disabled={isGeneratingPdf}
+             className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-wait whitespace-nowrap"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> 處理中...
+              </>
+            ) : (
+              <>
+                <Download size={18} /> 下載 PDF
+              </>
+            )}
           </button>
         </div>
       </div>
 
       {/* A4 Paper Container */}
       <div className="flex-1 bg-slate-100 p-4 md:p-8 print:p-0 print:bg-white overflow-y-auto">
-        <div className="max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-8 md:p-12 print:shadow-none print:w-full print:max-w-none print:p-0 text-black font-sans">
+        <div 
+          id="report-content" 
+          className="max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-8 md:p-12 print:shadow-none print:w-full print:max-w-none print:p-0 text-black font-sans box-border"
+        >
           
           {/* Report Content */}
           
