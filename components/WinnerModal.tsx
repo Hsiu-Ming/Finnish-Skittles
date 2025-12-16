@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Printer, RotateCcw, CircleX } from 'lucide-react';
+import { Trophy, Printer, RotateCcw, CircleX, PenTool } from 'lucide-react';
 import { Team } from '../types';
 
 interface WinnerModalProps {
@@ -38,8 +38,8 @@ const WinnerModal: React.FC<WinnerModalProps> = ({ winner, reason, onRestart, on
             onClick={onPrint}
             className="w-full py-3.5 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-700 transition-all shadow-lg active:scale-[0.98]"
           >
-            <Printer size={18} />
-            列印記錄表 (Print)
+            <PenTool size={18} />
+            簽名並列印 (Sign & Print)
           </button>
           
           <button 

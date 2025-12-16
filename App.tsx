@@ -22,6 +22,7 @@ const App: React.FC = () => {
 
   const [selectedPoints, setSelectedPoints] = useState<number | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   // --- Actions ---
 
@@ -172,11 +173,12 @@ const App: React.FC = () => {
   const handleRestart = () => {
     if (window.confirm("確定要結束並返回主選單嗎？")) {
         setGameState(prev => ({ ...prev, status: 'SETUP' }));
+        setIsReportOpen(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleShowReport = () => {
+    setIsReportOpen(true);
   };
 
   // --- Render ---
@@ -253,18 +255,22 @@ const App: React.FC = () => {
             logs={gameState.history} 
         />
         
-        {gameState.status === 'FINISHED' && gameState.winnerId && (
+        {gameState.status === 'FINISHED' && gameState.winnerId && !isReportOpen && (
             <WinnerModal 
               winner={gameState.winnerId === 'A' ? gameState.teamA : gameState.teamB}
               reason={gameState.winReason || '比賽結束'}
               onRestart={handleRestart}
-              onPrint={handlePrint}
+              onPrint={handleShowReport}
             />
         )}
       </div>
 
-      {/* Print View */}
-      <PrintReport gameState={gameState} />
+      {/* Print View (Modal/Overlay) */}
+      <PrintReport 
+          gameState={gameState} 
+          isOpen={isReportOpen}
+          onClose={() => setIsReportOpen(false)}
+      />
     </div>
   );
 };
