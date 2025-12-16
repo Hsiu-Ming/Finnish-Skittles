@@ -1,0 +1,5 @@
+{
+  "name": "Mölkky Master_V3",
+  "description": "A professional digital scorer for Mölkky, the Finnish throwing game. Features team roster management, automatic score rules (50-point cap, 3-strike elimination), and printable game reports.",
+  "requestFramePermissions": []
+}
